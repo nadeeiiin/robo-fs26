@@ -21,7 +21,7 @@ class DriveToGoal:
         rospy.sleep(2.0)
 
     def cb_left(self, msg):
-        self.left_ticks = msg.data
+        self.left_ticks = -msg.data
 
     def cb_right(self, msg):
         self.right_ticks = msg.data
@@ -36,34 +36,52 @@ class DriveToGoal:
     def drive_ticks(self, ticks, vel_l, vel_r):
         while self.left_ticks is None or self.right_ticks is None:
             rospy.sleep(0.05)
-        start_l, start_r = self.left_ticks, self.right_ticks
+        
+        # Räder starten
+        self.set_wheels(vel_l, vel_r)
+        
+        # Warten bis sich die Encoder bewegen
+        init_l, init_r = self.left_ticks, self.right_ticks
         rate = rospy.Rate(20)
         while not rospy.is_shutdown():
-            if (abs(self.left_ticks - start_l) + abs(self.right_ticks - start_r)) / 2 >= ticks:
-                break
-            self.set_wheels(vel_l, vel_r)
+            if self.left_ticks != init_l or self.right_ticks != init_r:
+                break  # erster Tick angekommen
             rate.sleep()
-        self.set_wheels(0.0, 0.0)
-        rospy.sleep(0.5)
+        
+        # Startwert setzen
+        start_l, start_r = self.left_ticks, self.right_ticks
+        
+        while not rospy.is_shutdown():
+            delta = (abs(self.left_ticks - start_l) + abs(self.right_ticks - start_r)) / 2
+            if delta >= ticks:
+                break
+            rate.sleep()
+
+        delta_l = abs(self.left_ticks - start_l)
+        delta_r = abs(self.right_ticks - start_r)
+        rospy.loginfo(f"Effektiv: left={delta_l}, right={delta_r}, durchschnitt={(delta_l+delta_r)/2:.1f}")
     
+        
+        self.set_wheels(0.0, 0.0)
+        rospy.sleep(3.0)
+
     def to_ticks(self, distance):
         return int(distance / (2* math.pi * WHEEL_RADIUS) * TICKS_RESOLUTION)
 
     def rotate(self, angle):
         ticks = self.to_ticks(abs(angle) * WHEELBASE / 2)
-        self.drive_ticks(ticks, -0.3 if angle > 0 else 0.3, 0.3 if angle > 0 else -0.3)
+        rospy.loginfo(f"Rotation: {math.degrees(angle):.1f} Grad, theoretische Ticks={ticks}")
+        self.drive_ticks(ticks, -0.2 if angle > 0 else 0.2, 0.2 if angle > 0 else -0.2)
 
-    def run(self, goal_x, goal_y)
-    angle = math.atan2(goal_y, goal_x)
-    distance = math.sqrt(goal_x ** 2 + goal_y ** 2)
+    def run(self, goal_x, goal_y):
+        angle = math.atan2(goal_y, goal_x)
+        distance = math.sqrt(goal_x ** 2 + goal_y ** 2)
 
-    self.rotate(angle)
-    self.drive_ticks(self.to_ticks(distance), 0.3, 0.3)
-    rospy.loginfo("done!")
+        self.rotate(angle)
+        self.drive_ticks(self.to_ticks(distance), 0.3, 0.3)
+        rospy.loginfo("done!")
 
 if __name__ == '__main__':
     robot = DriveToGoal(os.getenv('VEHICLE_NAME', 'pi'))
-    robot.run(
-        goal_x = 0,
-        goal_y = 0
-    )
+    robot.run(goal_x = 1.3, goal_y = 1.05)
+    #robot.rotate(math.pi / 2) # Rotation optisch testen
