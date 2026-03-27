@@ -9,7 +9,7 @@ from std_msgs.msg import Header
 
 TICKS_RESOLUTION = 144
 WHEEL_RADIUS = 0.0335
-WHEELBASE = 0.07 #changed so it makes exactly one turn
+WHEELBASE = 0.1 #changed so it makes exactly one turn
 
 # length each wheel must travel: pi * wheelbase
 # resolution = arc_length / (2pi * wheel_radius)
