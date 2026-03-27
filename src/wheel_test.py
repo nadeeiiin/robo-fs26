@@ -35,17 +35,17 @@ class WheelTest:
         right_start = self.right_ticks
 
         # drive straight for 1 second
-        self.set_wheels(0.3, 0.3)
+        self.set_wheels(0.3, -0.3)
         rospy.sleep(1.0)
         self.set_wheels(0.0, 0.0)
 
         left_traveled  = abs(self.left_ticks  - left_start)
         right_traveled = abs(self.right_ticks - right_start)
 
-        rospy.loginfo(f"Left ticks:  {left_traveled}")
-        rospy.loginfo(f"Right ticks: {right_traveled}")
-        rospy.loginfo(f"Difference:  {abs(left_traveled - right_traveled)}")
-        rospy.loginfo(f"Ratio right/left: {right_traveled / left_traveled:.2f}")
+        #rospy.loginfo(f"Left ticks:  {left_traveled}")
+        #rospy.loginfo(f"Right ticks: {right_traveled}")
+        #rospy.loginfo(f"Difference:  {abs(left_traveled - right_traveled)}")
+        #rospy.loginfo(f"Ratio right/left: {right_traveled / left_traveled:.2f}")
 
 if __name__ == '__main__':
     vehicle_name = os.getenv('VEHICLE_NAME', 'pi')
