@@ -6,7 +6,7 @@ from duckietown_msgs.msg import WheelsCmdStamped, WheelEncoderStamped
 from std_msgs.msg import Header
 
 WHEEL_RADIUS = 0.0335
-WHEELBASE = 0.1
+WHEELBASE = 0.048 # angepasst da viel zu stark gedreht
 TICKS_RESOLUTION = 144
 
 class DriveToGoal:
@@ -83,5 +83,5 @@ class DriveToGoal:
 
 if __name__ == '__main__':
     robot = DriveToGoal(os.getenv('VEHICLE_NAME', 'pi'))
-    robot.run(goal_x = 1.3, goal_y = 1.05)
+    robot.run(goal_x = 0.24, goal_y = 0.29)
     #robot.rotate(math.pi / 2) # Rotation optisch testen
