@@ -14,7 +14,7 @@ WHEELBASE = 0.1 #changed so it makes exactly one turn
 # length each wheel must travel: pi * wheelbase
 # resolution = arc_length / (2pi * wheel_radius)
 # ticks needed = resolution * TICKS_RESOLUTION
-ROTATION_TICKS = int((math.pi * WHEELBASE) / (2 * math.pi * WHEEL_RADIUS) * TICKS_RESOLUTION)
+ROTATION_TICKS = int((math.pi * (WHEELBASE / 2)) / (2 * math.pi * WHEEL_RADIUS) * TICKS_RESOLUTION)
 
 class RotateInPlace:
 
