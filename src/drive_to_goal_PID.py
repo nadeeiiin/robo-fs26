@@ -64,6 +64,11 @@ class PIDController:
         return p + i + d
 
 class DriveToGoalRegulated:
+    """Fährt den Duckiebot mit zwei parallelen PID-Reglern zu Zielpositionen.
+
+    pid_dist    : regelt die Vorwärtsgeschwindigkeit v  (Fehler = Abstand)
+    pid_heading : regelt die Drehgeschwindigkeit omega  (Fehler = Winkel)
+    """
 
     def __init__(self, robot_name):
         self.robot_name = robot_name
@@ -97,14 +102,13 @@ class DriveToGoalRegulated:
         # pid_dist: Regelgroesse = Abstand zum Ziel -> v
         # pid_heading: Regelgroesse = Winkel zum Ziel -> omega
         # Parameter experimentell anpassen
-        self.pid_dist    = PIDController(Kp=0.5,  Ki=0.01, Kd=0.05)
+        self.pid_dist    = PIDController(Kp=0.6,  Ki=0.01, Kd=0.05)
         self.pid_heading = PIDController(Kp=2.0,  Ki=0.01, Kd=0.1)
 
         rospy.on_shutdown(self.stop)
         rospy.sleep(2.0)
 
     # Encoder-Callbacks
-
     def cb_left(self, msg):
         self.left_ticks = msg.data
 
@@ -112,7 +116,6 @@ class DriveToGoalRegulated:
         self.right_ticks = msg.data
 
     # Hilfsfunktionen
-
     def set_wheels(self, vel_left, vel_right):
         cmd = WheelsCmdStamped()
         cmd.header.stamp = rospy.Time.now()
@@ -128,22 +131,21 @@ class DriveToGoalRegulated:
             rospy.sleep(0.05)
 
     def v_omega_to_wheels(self, v, omega):
-        """Rechnet v und omega in Radgeschwindigkeiten um.
+        """
+        Rechnet v und omega in Radgeschwindigkeiten um.
         """
         vel_left  = (v - omega * WHEELBASE / 2) / WHEEL_RADIUS
         vel_right = (v + omega * WHEELBASE / 2) / WHEEL_RADIUS
 
-        # Skalieren falls MAX_SPEED ueberschritten
-        max_val = max(abs(vel_left), abs(vel_right))
-        if max_val > MAX_SPEED:
-            scale     = MAX_SPEED / max_val
-            vel_left  *= scale
-            vel_right *= scale
+        # Skalierung (actuator saturation vermeiden)
+        peak = max(abs(vel_left), abs(vel_right))
+        if peak > MAX_SPEED:
+            vel_left  *= MAX_SPEED / peak
+            vel_right *= MAX_SPEED / peak
 
         return vel_left, vel_right
 
     # Odometrie
-
     def update_odometry(self):
         """
         Aktualisiert die Pose (x, y, theta) aus den Encoder-Tick-Differenzen.
@@ -161,6 +163,7 @@ class DriveToGoalRegulated:
         if delta_left == 0 and delta_right == 0:
             return
 
+        # Ticks in Distanz umrechnen
         d_left = (delta_left  / TICKS_RESOLUTION) * 2 * math.pi * WHEEL_RADIUS
         d_right = (delta_right / TICKS_RESOLUTION) * 2 * math.pi * WHEEL_RADIUS
 
@@ -169,6 +172,7 @@ class DriveToGoalRegulated:
 
         self.x += v * math.cos(self.theta)
         self.y += v * math.sin(self.theta)
+
         self.theta = math.atan2(
             math.sin(self.theta + omega),
             math.cos(self.theta + omega)
@@ -207,9 +211,9 @@ class DriveToGoalRegulated:
             self.update_odometry()
             self.publish_transform()
 
-            dx             = goal_x - self.x
-            dy             = goal_y - self.y
-            dist_error     = math.sqrt(dx**2 + dy**2)
+            dx = goal_x - self.x
+            dy = goal_y - self.y
+            dist_error = math.sqrt(dx**2 + dy**2)
 
             # Abbruch wenn Ziel erreicht
             if dist_error < DIST_TOLERANCE:
@@ -223,26 +227,26 @@ class DriveToGoalRegulated:
             )
 
             # Zeitschritt für I- und D-Anteil
-            now       = rospy.Time.now()
-            dt        = (now - prev_time).to_sec()
+            now = rospy.Time.now()
+            dt = (now - prev_time).to_sec()
             prev_time = now
 
             # PID auf Abstand -> v
             # cos(heading_error) dämpft v wenn der Roboter schief steht:
             # bei 0 Grad => volle Geschwindigkeit, bei 90 Grad => v = 0
-            v     = self.pid_dist.compute(dist_error, dt) * max(0.0, math.cos(heading_error))
+            v = self.pid_dist.compute(dist_error, dt) * max(0.0, math.cos(heading_error))
 
             # PID auf Winkel -> omega
             omega = self.pid_heading.compute(heading_error, dt)
 
             vel_left, vel_right = self.v_omega_to_wheels(v, omega)
+            self.set_wheels(vel_left, vel_right)
 
             rospy.loginfo(
                 f"Pose: ({self.x:.2f}, {self.y:.2f}, {math.degrees(self.theta):.0f} Grad) | "
                 f"dist={dist_error:.3f}m hdg={math.degrees(heading_error):.1f} Grad | "
                 f"v={v:.3f} w={omega:.3f} | vL={vel_left:.3f} vR={vel_right:.3f}"
             )
-            self.set_wheels(vel_left, vel_right)
             rate.sleep()
 
         self.stop()
@@ -295,9 +299,6 @@ class DriveToGoalRegulated:
         goals: Liste von (x, y) oder (x, y, theta) Tupeln.
                Koordinaten sind absolut vom Startpunkt (0,0) aus.
                theta ist optional und gibt die gewünschte Endorientierung an.
-
-        Teilaufgabe a: ein Wegpunkt  -> goals = [(0.5, 0.0)]
-        Teilaufgabe b: mehrere -> goals = [(0.5, 0.0), (0.5, 0.3), ...]
         """
         self.wait_for_encoders()
         self.prev_left  = self.left_ticks
@@ -334,7 +335,7 @@ if __name__ == '__main__':
 
 
     robot.run(goals=[
-        (0.5, 0.0),            # Wegpunkt 1
-        # (0.5, 0.3),          # Wegpunkt 2
-        # (0.0, 0.0, 0.0),     # Wegpunkt 3
+        (0.8, -0.7),
+        (1.4, -0.9, math.radians(-80)),
+        (1.6, -1.8, math.radians(-90)),
     ])
