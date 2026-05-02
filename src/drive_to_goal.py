@@ -21,7 +21,7 @@ class DriveToGoal:
         rospy.sleep(2.0)
 
     def cb_left(self, msg):
-        self.left_ticks = -msg.data
+        self.left_ticks = msg.data
 
     def cb_right(self, msg):
         self.right_ticks = msg.data
